@@ -5,8 +5,8 @@ class Graph{
         // Attributes
         int n, m, k;
         vector<int> inDeg;
-        vector<vector<int>> gT;
-        vector<vector<double>> probT;
+        vector<vector<int> > gT;
+        vector<vector<double> > probT;
         vector<bool> visit;
         vector<int> visit_mark;
         enum InfluModel {IC, LT};
