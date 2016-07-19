@@ -1,0 +1,123 @@
+from pytim import PyTimGraph
+import sys
+sys.path.append("..")
+from IM_Base import IM_Base
+import numpy as np
+from numpy.random import randint, binomial, random
+from copy import deepcopy
+import pdb
+
+class COINHDZero(IM_Base):
+    def __init__(self, seed_size, graph_file, rounds, cost, 
+                context_dims=2, gamma=0.4, epsilon=0.1):
+        """------------------------------------------------------------
+        seed_size          : number of nodes to be selected
+        graph_file         : txt file storing the list of edges of graph
+        rounds             : number of rounds the algorithm will run
+        context_dims       : number of dimensons in context vectors
+        explore_thresholds : lower bounds of under-exploration of nodes
+        epsilon            : parameter of TIM algorithm
+        ------------------------------------------------------------"""
+        # Tunable algorithm parameters
+        super().__init__(seed_size, graph_file, rounds, context_dims)
+        self.epsilon = epsilon
+        self.cost = cost
+        self.explore_thresholds = [((r ** gamma)/100) for r in np.arange(1, rounds+1)]
+
+        self.under_exps = []
+        reverse_dict = {node : self.edges[np.where(self.edges[:,0] == node)[0]][:,1] \
+                                           for node in self.nodes}
+        self.outdegs = np.array([len(reverse_dict[node]) for node in self.nodes])
+
+        # Initializes the counters and influence estimates
+        self.counters = np.array([[0 for edge_idx in range(self.edge_cnt)]
+                                  for context_idx in range(self.context_cnt)])
+        self.successes = np.zeros_like(self.counters)
+        self.inf_ests = np.zeros(self.counters.shape)
+
+    
+    def __call__(self):
+        self.run()
+    
+    def run(self):
+        """------------------------------------------------------------
+        High level function that runs the online influence maximization
+        algorithm for self.rounds times and reports aggregated regret
+        ------------------------------------------------------------"""
+        for r in np.arange(1, self.rounds+1):
+            print("--------------------------------------------------")
+            print("Round %d" % (r))
+            self.get_context()
+            context_idx = self.context_classifier(self.context_vector)
+            under_explored = self.under_explored_nodes(context_idx, r)
+
+            # If there are enough under-explored edges, return them
+            if(len(under_explored) == self.seed_size):
+                print("Under-Explored")
+                exploration_phase = True
+                seed_set = under_explored
+            
+            # Otherwise, run TIM
+            else:
+                print("TIM")
+                exploration_phase = False
+                self.dump_graph(self.inf_ests[context_idx], ("tim_"+self.graph_file))
+                timgraph = PyTimGraph(bytes("tim_" + self.graph_file, "ascii"), self.node_cnt, self.edge_cnt,
+                                                          (self.seed_size - len(under_explored)), bytes("IC", "ascii"))
+                tim_set = timgraph.get_seed_set(self.epsilon)
+                
+                seed_set = list(tim_set)
+                seed_set.extend(under_explored)
+                timgraph = None
+
+            # Simulates the chosen seed_set's performance in real world
+            online_spread, tried_cnts, success_cnts = self.simulate_spread(seed_set)
+
+            if(exploration_phase):
+                total_cost = self.active_update(tried_cnts, success_cnts, context_idx, r)
+
+            # Update influence estimates and counters
+            self.counters[context_idx] += tried_cnts
+            self.successes[context_idx] += success_cnts
+            for edge_idx, cnt in enumerate(self.counters[context_idx]):
+                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else (0)
+            
+            # Oracle run
+            real_infs = self.context_influences(self.context_vector)
+            self.dump_graph(real_infs, ("tim_"+self.graph_file))
+            oracle = PyTimGraph(bytes("tim_" + self.graph_file, "ascii"), self.node_cnt, self.edge_cnt, self.seed_size, bytes("IC", "ascii"))
+            oracle_set = list(oracle.get_seed_set(self.epsilon))
+            oracle = None
+            oracle_spread, _, _ = self.simulate_spread(oracle_set)
+            self.regret.append((oracle_spread - total_cost) - online_spread)
+            self.spread.append(online_spread)
+            self.update_squared_error(real_infs, self.inf_ests[context_idx])
+            print("Our Spread: %d" % (online_spread))
+            print("Regret: %d" % (self.regret[-1]))
+            print("Sq. Error: %2.2f" % (self.squared_error[-1]))       
+            
+    def under_explored_nodes(self, context_idx, round_idx):
+        """------------------------------------------------------------
+        Checks which nodes are under-explored based on the trial counts
+        of the edges connected to them
+        ------------------------------------------------------------"""
+        cur_counter = self.counters[context_idx]
+        edge_idxs = np.array(np.where(cur_counter < self.explore_thresholds[round_idx-1])[0])
+        node_idxs = np.unique(self.edges[edge_idxs][:,0]).tolist()
+        self.under_exps.append(len(node_idxs))
+        print("Under Explored Count:%d" % (self.under_exps[-1]))
+        all_idxs = np.argsort(self.outdegs)[::-1].tolist()
+        under_exp_nodes = [idx for idx in all_idxs if(idx in node_idxs)]
+        return under_exp_nodes[:50]
+
+    def active_update(self, tried_cnts, success_cnts, context_idx, round_idx):
+        cum_cost = 0
+        for edge_idx, cnt in enumerate(self.counters[context_idx]):
+            if(cnt >= self.explore_thresholds[round_idx-1]):
+                continue
+            else:
+                cum_cost += 1
+                self.counters[context_idx][edge_idx] += tried_cnts[edge_idx]
+                self.successes[context_idx][edge_idx] += success_cnts[edge_idx]
+                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else 0
+            return cum_cost * self.cost
