@@ -29,7 +29,7 @@ else:
 experiment = sys.argv[1]
 dicts = [json.load(open(("results/" + experiment +"/"+method+"_results.json"), "r")) for method in methodlist]
 
-labels = {"coin": "COIN+", "coinrandom": "COIN", "oim": "CB+MLE", "thompson": "Thompson", "thompsong": "ThompsonG", "maxdegree": "High Degree", "pureexploitation": "Pure Exploitation"}
+labels = {"coin": "COIN+", "coinhd":"COIN-HD", "coinrandom": "COIN", "oim": "CB+MLE", "thompson": "Thompson", "thompsong": "ThompsonG", "maxdegree": "High Degree", "pureexploitation": "Pure Exploitation"}
 
 
 ### RAW REGRET
