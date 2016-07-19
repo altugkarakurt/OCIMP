@@ -21,7 +21,7 @@ class COINMLEZero(IM_Base):
         # Tunable algorithm parameters
         super().__init__(seed_size, graph_file, rounds, context_dims)
         self.epsilon = epsilon
-        self.explore_thresholds = [((r ** gamma)/10) for r in np.arange(1, rounds+1)]
+        self.explore_thresholds = [((r ** gamma)/100) for r in np.arange(1, rounds+1)]
         self.alpha = alpha
         self.beta = beta
 

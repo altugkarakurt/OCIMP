@@ -3,10 +3,11 @@ import sys
 sys.path.append("..")
 from IM_Base import IM_Base
 import numpy as np
-from numpy.random import randint, binomial, choice, random
+from numpy.random import randint, binomial, random
 from copy import deepcopy
+import pdb
 
-class COINRandomZero(IM_Base):
+class COINHDZero(IM_Base):
     def __init__(self, seed_size, graph_file, rounds, context_dims=2, 
                 gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
@@ -23,12 +24,16 @@ class COINRandomZero(IM_Base):
         self.explore_thresholds = [((r ** gamma)/100) for r in np.arange(1, rounds+1)]
 
         self.under_exps = []
+        reverse_dict = {node : self.edges[np.where(self.edges[:,0] == node)[0]][:,1] \
+                                           for node in self.nodes}
+        self.outdegs = np.array([len(reverse_dict[node]) for node in self.nodes])
 
         # Initializes the counters and influence estimates
         self.counters = np.array([[0 for edge_idx in range(self.edge_cnt)]
                                   for context_idx in range(self.context_cnt)])
         self.successes = np.zeros_like(self.counters)
-        self.inf_ests = np.zeros_like(self.counters)
+        self.inf_ests = np.zeros(self.counters.shape)
+
     
     def __call__(self):
         self.run()
@@ -40,7 +45,7 @@ class COINRandomZero(IM_Base):
         ------------------------------------------------------------"""
         for r in np.arange(1, self.rounds+1):
             print("--------------------------------------------------")
-            print("Round: %d" % (r))
+            print("Round %d" % (r))
             self.get_context()
             context_idx = self.context_classifier(self.context_vector)
             under_explored = self.under_explored_nodes(context_idx, r)
@@ -69,7 +74,7 @@ class COINRandomZero(IM_Base):
             self.counters[context_idx] += tried_cnts
             self.successes[context_idx] += success_cnts
             for edge_idx, cnt in enumerate(self.counters[context_idx]):
-                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else 0
+                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else (0)
             
             # Oracle run
             real_infs = self.context_influences(self.context_vector)
@@ -83,7 +88,7 @@ class COINRandomZero(IM_Base):
             self.update_squared_error(real_infs, self.inf_ests[context_idx])
             print("Our Spread: %d" % (online_spread))
             print("Regret: %d" % (self.regret[-1]))
-            print("Sq. Error: %2.2f" % (self.squared_error[-1]))   
+            print("Sq. Error: %2.2f" % (self.squared_error[-1]))       
             
     def under_explored_nodes(self, context_idx, round_idx):
         """------------------------------------------------------------
@@ -92,8 +97,9 @@ class COINRandomZero(IM_Base):
         ------------------------------------------------------------"""
         cur_counter = self.counters[context_idx]
         edge_idxs = np.array(np.where(cur_counter < self.explore_thresholds[round_idx-1])[0])
-        under_exp_nodes = np.unique(self.edges[edge_idxs][:,0])
-        self.under_exps.append(len(under_exp_nodes))
-        if(len(under_exp_nodes) > self.seed_size):
-            under_exp_nodes = choice(under_exp_nodes, self.seed_size, replace=False)
-        return under_exp_nodes.tolist()
+        node_idxs = np.unique(self.edges[edge_idxs][:,0]).tolist()
+        self.under_exps.append(len(node_idxs))
+        print("Under Explored Count:%d" % (self.under_exps[-1]))
+        all_idxs = np.argsort(self.outdegs)[::-1].tolist()
+        under_exp_nodes = [idx for idx in all_idxs if(idx in node_idxs)]
+        return under_exp_nodes[:50]

@@ -1,4 +1,4 @@
-from COINRandom import COINRandom
+from COINHDZero import COINHDZero
 import sys
 sys.path.append("..")
 import Report
@@ -8,7 +8,7 @@ experiment_name = "noncontextual_" + graph_file[:-4]
 rounds = 1250
 seed_size = 50
 
-coinrandom = COINRandom(seed_size, graph_file, rounds)
-coinrandom()
+coinhdzero = COINHDZero(seed_size, graph_file, rounds)
+coinhdzero()
 
-Report.report("coinrandom", coinrandom, experiment_name)
+Report.report("coinhdzero", coinhdzero, experiment_name)
