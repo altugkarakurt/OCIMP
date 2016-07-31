@@ -8,7 +8,7 @@ from numpy.random import randint, binomial, random
 from copy import deepcopy
 
 class COINZero(IM_Base):
-    def __init__(self, seed_size, graph_file, rounds, cost, 
+    def __init__(self, seed_size, graph_file, rounds, iscontextual, cost, 
                 context_dims=2, gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
         seed_size          : number of nodes to be selected
@@ -19,7 +19,7 @@ class COINZero(IM_Base):
         epsilon            : parameter of TIM algorithm
         ------------------------------------------------------------"""
         # Tunable algorithm parameters
-        super().__init__(seed_size, graph_file, rounds, context_dims)
+        super().__init__(seed_size, graph_file, rounds, iscontextual, cost)
         self.epsilon = epsilon
         self.cost = cost
         self.explore_thresholds = [((r ** gamma)/100) for r in np.arange(1, rounds+1)]
@@ -86,7 +86,7 @@ class COINZero(IM_Base):
             oracle_set = list(oracle.get_seed_set(self.epsilon))
             oracle = None
             oracle_spread, _, _ = self.simulate_spread(oracle_set)
-            self.regret.append((oracle_spread - total_cost) - online_spread)
+            self.regret.append((oracle_spread + total_cost) - online_spread)
             self.spread.append(online_spread)
             self.update_squared_error(real_infs, self.inf_ests[context_idx])
             print("Our Spread: %d" % (online_spread))
@@ -109,15 +109,3 @@ class COINZero(IM_Base):
             undertim = PyUnderTimGraph(bytes("undertim_" + self.graph_file, "ascii"), self.node_cnt, self.edge_cnt, self.seed_size, bytes("IC", "ascii"), banned_nodes)
             under_exp_nodes = list(undertim.get_seed_set(self.epsilon))
         return under_exp_nodes
-
-    def active_update(self, tried_cnts, success_cnts, context_idx, round_idx):
-        cum_cost = 0
-        for edge_idx, cnt in enumerate(self.counters[context_idx]):
-            if((cnt < self.explore_thresholds[round_idx-1]) and (tried_cnts[edge_idx])):
-                cum_cost += 1
-                self.counters[context_idx][edge_idx] += tried_cnts[edge_idx]
-                self.successes[context_idx][edge_idx] += success_cnts[edge_idx]
-                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else 0
-            else:
-                continue
-            return cum_cost * self.cost

@@ -2,14 +2,30 @@ from COINRandomZero import COINRandomZero
 import sys
 sys.path.append("..")
 import Report
+from os.path import isfile, join
 
-graph_file = "subnethept.txt"
-experiment_name = "noncontextual_" + graph_file[:-4]
-rounds = 1250
 seed_size = 50
 cost = 0.1
 
-coinrandomzero = COINRandomZero(seed_size, graph_file, rounds, cost)
-coinrandomzero()
+for iscontextual in [True, False]:
+	for graph_file in ["subnethept.txt", "nethept.txt"]:
+		if((graph_file == "subnethept.txt") and (iscontextual)):
+			rounds = 5000
+		elif((graph_file == "nethept.txt") and (iscontextual)):
+			rounds = 5000
+		elif((graph_file == "subnethept.txt") and (not iscontextual)):
+			rounds = 1250
+		elif((graph_file == "nethept.txt") and (not iscontextual)):
+			rounds = 2500
+		experiment_name = "contextual_" if(iscontextual) else "noncontextual_"
+		experiment_name += graph_file[:-4]
 
-Report.report("coinrandomzero", coinrandomzero, experiment_name)
+		pathway = join("../../Misc/active_results", experiment_name, "coinrandomzero_results.json")
+
+		# Experiment is already done
+		if(isfile(pathway)):
+			continue
+
+		coinrandomzero = COINRandomZero(seed_size, graph_file, rounds, iscontextual, cost)
+		coinrandomzero()
+		Report.report("coinrandomzero", coinrandomzero, experiment_name)

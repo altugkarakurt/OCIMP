@@ -8,7 +8,7 @@ from copy import deepcopy
 import pdb
 
 class COINHDZero(IM_Base):
-    def __init__(self, seed_size, graph_file, rounds, cost, 
+    def __init__(self, seed_size, graph_file, rounds, iscontextual, cost, 
                 context_dims=2, gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
         seed_size          : number of nodes to be selected
@@ -19,7 +19,7 @@ class COINHDZero(IM_Base):
         epsilon            : parameter of TIM algorithm
         ------------------------------------------------------------"""
         # Tunable algorithm parameters
-        super().__init__(seed_size, graph_file, rounds, context_dims)
+        super().__init__(seed_size, graph_file, rounds, iscontextual, cost)
         self.epsilon = epsilon
         self.cost = cost
         self.explore_thresholds = [((r ** gamma)/100) for r in np.arange(1, rounds+1)]
@@ -53,7 +53,7 @@ class COINHDZero(IM_Base):
 
             # If there are enough under-explored edges, return them
             if(len(under_explored) == self.seed_size):
-                print("Under-Explored")
+                print("Under Explored Count:%d" % (self.under_exps[-1]))
                 exploration_phase = True
                 seed_set = under_explored
             
@@ -89,7 +89,7 @@ class COINHDZero(IM_Base):
             oracle_set = list(oracle.get_seed_set(self.epsilon))
             oracle = None
             oracle_spread, _, _ = self.simulate_spread(oracle_set)
-            self.regret.append((oracle_spread - total_cost) - online_spread)
+            self.regret.append((oracle_spread + total_cost) - online_spread)
             self.spread.append(online_spread)
             self.update_squared_error(real_infs, self.inf_ests[context_idx])
             print("Our Spread: %d" % (online_spread))
@@ -105,19 +105,7 @@ class COINHDZero(IM_Base):
         edge_idxs = np.array(np.where(cur_counter < self.explore_thresholds[round_idx-1])[0])
         node_idxs = np.unique(self.edges[edge_idxs][:,0]).tolist()
         self.under_exps.append(len(node_idxs))
-        print("Under Explored Count:%d" % (self.under_exps[-1]))
+        
         all_idxs = np.argsort(self.outdegs)[::-1].tolist()
         under_exp_nodes = [idx for idx in all_idxs if(idx in node_idxs)]
-        return under_exp_nodes[:50]
-
-    def active_update(self, tried_cnts, success_cnts, context_idx, round_idx):
-        cum_cost = 0
-        for edge_idx, cnt in enumerate(self.counters[context_idx]):
-            if(cnt >= self.explore_thresholds[round_idx-1]):
-                continue
-            else:
-                cum_cost += 1
-                self.counters[context_idx][edge_idx] += tried_cnts[edge_idx]
-                self.successes[context_idx][edge_idx] += success_cnts[edge_idx]
-                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else 0
-            return cum_cost * self.cost
+        return under_exp_nodes[:self.seed_size]
