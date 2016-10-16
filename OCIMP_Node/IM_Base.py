@@ -1,16 +1,20 @@
 import numpy as np
 from numpy.random import random, permutation, choice, binomial
 from copy import deepcopy
-import pdb
+import math
 
 class IM_Base:
-    def __init__(self, seed_size, graph_file, rounds, iscontextual, cost, context_dims=2):
+    """------------------------------------------------------------
+    Base class of all IM algorithms. Handles common tasks such as
+    IC influence spread simulation, keeping track of results, 
+    generating contexts and influence probabilities, etc.
+    ------------------------------------------------------------"""
+    def __init__(self, seed_size, graph_file, epochs, iscontextual, context_dims=2):
         self.load_graph(graph_file)
-        self.cost = cost
         self.iscontextual = iscontextual
         self.context_dims = context_dims
         self.context_cnt = context_dims ** 2
-        self.rounds = rounds
+        self.epochs = epochs
         self.seed_size = seed_size 
         self.init_simulator(self.context_cnt)
         self.context_vector = np.zeros(self.context_dims)
@@ -18,7 +22,7 @@ class IM_Base:
         # Variables for storing the experiment results
         self.regret = []
         self.spread = []
-        self.squared_error = []
+        self.l2_error = []
 
     def init_simulator(self, context_cnt):
         self._slopes = np.array([random(4) * 3 / self.indegs[edge[1]] for edge in self.edges])
@@ -41,27 +45,6 @@ class IM_Base:
         self.graph_dict = {node : self.edges[np.where(self.edges[:,1] == node)[0]][:,0] \
                                            for node in self.nodes}
         self.indegs = np.array([len(self.graph_dict[node]) for node in self.nodes])
-
-    def simulate_spread(self, seed_set):
-        """------------------------------------------------------------
-        Simulates the spread of chosen seed set, using the real 
-        influences. Returns the aggregated results of 10 spread trials.
-        ------------------------------------------------------------"""
-        agenda = deepcopy(seed_set)
-        context_idx = self.context_classifier(self.context_vector)
-        real_infs = self.context_influences(self.context_vector)
-        tried_cnts = np.zeros_like(self.edges[:,0])
-        success_cnts = np.zeros_like(self.edges[:,0])
-        for node in agenda:
-            edge_idxs = np.where(self.edges[:,0] == node)[0]
-            for idx in edge_idxs:
-                if(binomial(1, real_infs[idx])):
-                    if(self.edges[idx][1] not in agenda):
-                        success_cnts[idx] += 1
-                        agenda.append(self.edges[idx][1])
-                tried_cnts[idx] += 1
-        spread_cnt = len(agenda)
-        return spread_cnt, tried_cnts, success_cnts
 
     def context_influences(self, context_vector):
         """------------------------------------------------------------
@@ -108,6 +91,9 @@ class IM_Base:
         np.savetxt(dump_name, inf_graph, delimiter="\t", fmt=["%d", "%d", "%1.2f"])
 
     def get_context(self):
+        """------------------------------------------------------------
+        Returns a feature vector
+        ------------------------------------------------------------"""
         if(self.iscontextual):
             self.context_vector = random(self.context_dims) # Random context
         else:
@@ -120,19 +106,51 @@ class IM_Base:
         ------------------------------------------------------------"""
         return int("".join(map(str, [1 if(c > 0.5) else 0 for c in context_vector])), 2)
 
-    def update_squared_error(self, real_infs, inf_ests=None):
+    def update_l2_error(self, real_infs, inf_ests=None):
         if(inf_ests is None):
             inf_ests = self.inf_ests
-        self.squared_error.append(np.sqrt(sum((np.array(inf_ests) - np.array(real_infs)) ** 2 )))
+        self.l2_error.append(np.sqrt(sum((np.array(inf_ests) - np.array(real_infs)) ** 2 )))
 
-    def active_update(self, tried_cnts, success_cnts, context_idx, round_idx):
-        cum_cost = 0
+    def simulate_spread(self, seed_set):
+        """------------------------------------------------------------
+        Simulates the spread of chosen seed set, using the real 
+        influences.
+        ------------------------------------------------------------"""
+        agenda = deepcopy(seed_set)
+        context_idx = self.context_classifier(self.context_vector)
+        real_infs = self.context_influences(self.context_vector)
+        for node in agenda:
+            edge_idxs = np.where(self.edges[:,0] == node)[0]
+            for idx in edge_idxs:
+                if(binomial(1, real_infs[idx])):
+                    if(self.edges[idx][1] not in agenda):
+                        agenda.append(self.edges[idx][1])
+        return list(agenda)
+
+    def random_update(self, context_idx, influenced_nodes, seed_set):
+        """------------------------------------------------------------
+        Updates influence estimates using node level feedback by
+        randomly picking an activated parent node at the epoch.
+        ------------------------------------------------------------"""
+        # Iterates over endogeneously influenced nodes
+        endo_nodes = list(set(influenced_nodes) - set(seed_set))
+        for node in endo_nodes:
+            # Retrieves the list of parent nodes
+            in_edges = np.where(self.edges[:,1] == node)[0]
+
+            # Leaves the parent nodes that weren't influenced
+            in_edges = [edge_idx for edge_idx in in_edges \
+                        if(self.edges[edge_idx][0] in influenced_nodes)]
+            # Randomly choose an influenced parent node
+            source_idx = choice(in_edges)
+            self.successes[context_idx][source_idx] += 1
+
+        for node in influenced_nodes:
+            out_edges = np.where(self.edges[:,0] == node)[0] 
+            # All out-edges of influenced edges are tried for influence
+            # propagation
+            for edge_idx in out_edges:
+                self.counters[context_idx][edge_idx] += 1
+
         for edge_idx, cnt in enumerate(self.counters[context_idx]):
-            if((cnt < self.explore_thresholds[round_idx-1]) and (tried_cnts[edge_idx] == 1)):
-                cum_cost += 1
-                self.counters[context_idx][edge_idx] += tried_cnts[edge_idx]
-                self.successes[context_idx][edge_idx] += success_cnts[edge_idx]
-                self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / self.counters[context_idx][edge_idx]
-            else:
-                continue
-        return cum_cost * self.cost
+            self.inf_ests[context_idx][edge_idx] = self.successes[context_idx][edge_idx] / cnt if(cnt > 0) else (0)
