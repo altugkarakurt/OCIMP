@@ -2,6 +2,11 @@ import numpy as np
 from numpy.random import shuffle, choice
 import networkx as nx
 
+"""--------------------------------------------------------------------
+This is the script used to generate the graph NetHEPT-. We didn't remove
+any extra nodes but one can do so by changing the ratio parameter.
+--------------------------------------------------------------------"""
+
 graph_file = "nethept.txt"
 ratio = 1
 indegrisk = True

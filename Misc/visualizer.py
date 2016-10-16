@@ -3,23 +3,24 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import sys
 import numpy as np
-from scipy.signal import butter, lfilter, freqz
 
+"""--------------------------------------------------------------------
+The script to visualize the results. It prints out raw regret, average
+regret and l2-error figures.Make sure to correct line 24 to look for
+the correct one of "results", "active_results" or "node_results". Then,
+you can use this script the following way:
+
+python visualizer.py [experiment_name] [method1] [method2] ...
+
+ex: python visualizer.py noncontextual_nethept coin coin+ thompsong
+--------------------------------------------------------------------"""
+
+### Tweaks to make matplotlib look pretty
 font = {'weight' : 'semibold',
         'size'   : 15}
 axisfont = {'size':'16', 'weight':'semibold'}
 mpl.rc('font', **font)
 mpl.rcParams['lines.linewidth'] = 2
-def butter_lowpass(cutoff, fs, order=5):
-    nyq = 0.5 * fs
-    normal_cutoff = cutoff / nyq
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    return b, a
-
-def lpf(data, cutoff=0.5, fs=10, order=5):
-    b, a = butter_lowpass(cutoff, fs, order=order)
-    y = lfilter(b, a, data)
-    return y
 
 if(len(sys.argv) > 1):
 	methodlist = sys.argv[2:]
@@ -27,88 +28,45 @@ else:
 	print("Indicate the Methods")
 	sys.exit(1)
 experiment = sys.argv[1]
-dicts = [json.load(open(("active_results/" + experiment +"/"+method+"_results.json"), "r")) for method in methodlist]
+dicts = [json.load(open(("results/" + experiment +"/"+method+"_results.json"), "r")) \
+		for method in methodlist]
 
-labels = {"coin": "COIN+", "coinhd":"COIN-HD", "coinrandom": "COIN", "oim": "CB+MLE", "thompson": "Thompson", "thompsong": "ThompsonG", "maxdegree": "High Degree", "pureexploitation": "Pure Exploitation"}
-
+labels = {"epsilongreedy":"$\epsilon_n$-Greedy", "coin+": "COIN+", "coinhd":"COIN-HD",
+		  "coin": "COIN", "oim": "CB+MLE", "thompson": "Thompson", "thompsong": "ThompsonG",
+		  "highdegree": "High Degree", "pureexploitation": "Pure Exploitation"}
+colors = ["b", "g", "r", "c", "m", "y", "k", "orange"]
 
 ### RAW REGRET
-"""
 raw_regrets = [res_dict["regret"] for res_dict in dicts]
 for idx, method in enumerate(methodlist):
-	filtered = np.concatenate((np.array(raw_regrets[idx][:20]), lpf(raw_regrets[idx])[20:]))
-	plt.plot(filtered, label=labels[method])
+	plt.plot(list(np.arange(900, 1250)), raw_regrets[idx][900:1250], colors[idx], label=labels[method])
 plt.grid()
-plt.xlim([0, len(filtered)])
-plt.ylim([-150,1500])
 plt.legend()
 plt.ylabel("Raw Regret")
 plt.xlabel("Epochs")
 plt.show()
-"""
+
 
 ### AVERAGE REGRET
 avg_regrets = [[sum(res_dict["regret"][:i+1])/(i+1) for i, _ in enumerate(res_dict["regret"])] for res_dict in dicts]
 
 for idx, method in enumerate(methodlist):
-	plt.plot(avg_regrets[idx], label=labels[method])
-#plt.title(experiment)
-plt.ylim([0,1400])
-plt.xlim([0, len(avg_regrets[idx])])
+	plt.plot(list(range(5000)), avg_regrets[idx][:len(avg_regrets[0])], colors[idx],  label=labels[method])
+plt.title(experiment)
 plt.legend()
 plt.grid()
 plt.ylabel("Average Regret", **axisfont)
 plt.xlabel("Epochs", **axisfont)
 plt.show()
 
-"""
-### MA REGRET 50
-ma = 50
-ma_regrets = [[sum(res_dict["regret"][i+1-ma:i+1])/(ma) for i, _ in enumerate(res_dict["regret"])] for res_dict in dicts]
-
-for idx, method in enumerate(methodlist):
-	plt.plot(ma_regrets[idx][ma:], label=method)
-plt.title(experiment)
-plt.legend()
-plt.ylabel("Moving Average Regret %d" % (ma))
-plt.xlabel("Rounds")
-plt.show()
-"""
-
 ### L2 ERROR
-sq_errors = [res_dict["squared_error"] for res_dict in dicts]
+l2_errors = [res_dict["l2_error"] for res_dict in dicts]
 for idx, method in enumerate(methodlist):
 	if(method != "maxdegree"):
-		#plt.plot(sq_errors[idx], label=labels[method])
-		filtered = np.concatenate((np.array(sq_errors[idx][:20]), lpf(sq_errors[idx])[20:]))
-		plt.plot(filtered, label=labels[method])
-#plt.title(experiment)
-plt.xlim([0, len(filtered)])
-plt.ylim([55, 87])
+		plt.plot(list(range(len(l2_errors[idx]))), l2_errors[idx], colors[idx], label=labels[method])
+plt.title(experiment)
 plt.legend()
 plt.grid()
 plt.ylabel("L2-Error", **axisfont)
 plt.xlabel("Epochs", **axisfont)
 plt.show()
-
-"""
-### SPREAD
-spreads = [res_dict["spread"] for res_dict in dicts]
-for idx, method in enumerate(methodlist):
-	plt.plot(spreads[idx], label=method)
-plt.title(experiment)
-plt.legend()
-plt.ylabel("Spread")
-plt.xlabel("Rounds")
-plt.show()
-
-### UNDER_EXPS
-for idx, method in enumerate(methodlist):
-	if("coin" in method):
-		plt.plot(dicts[idx]["under_exps"], label=method)
-plt.title(experiment)
-plt.legend()
-plt.ylabel("Under Explored Nodes")
-plt.xlabel("Rounds")
-plt.show()
-"""
