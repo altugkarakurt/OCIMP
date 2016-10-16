@@ -1,16 +1,20 @@
 import numpy as np
 from numpy.random import random, permutation, choice, binomial
 from copy import deepcopy
-import pdb
 
 class IM_Base:
-    def __init__(self, seed_size, graph_file, rounds, iscontextual, cost, context_dims=2):
+    """------------------------------------------------------------
+    Base class of all IM algorithms. Handles common tasks such as
+    IC influence spread simulation, keeping track of results, 
+    generating contexts and influence probabilities, etc.
+    ------------------------------------------------------------"""
+    def __init__(self, seed_size, graph_file, epochs, iscontextual, cost, context_dims=2):
         self.load_graph(graph_file)
         self.cost = cost
         self.iscontextual = iscontextual
         self.context_dims = context_dims
         self.context_cnt = context_dims ** 2
-        self.rounds = rounds
+        self.epochs = epochs
         self.seed_size = seed_size 
         self.init_simulator(self.context_cnt)
         self.context_vector = np.zeros(self.context_dims)
@@ -18,7 +22,7 @@ class IM_Base:
         # Variables for storing the experiment results
         self.regret = []
         self.spread = []
-        self.squared_error = []
+        self.l2_error = []
 
     def init_simulator(self, context_cnt):
         self._slopes = np.array([random(4) * 3 / self.indegs[edge[1]] for edge in self.edges])
@@ -108,6 +112,9 @@ class IM_Base:
         np.savetxt(dump_name, inf_graph, delimiter="\t", fmt=["%d", "%d", "%1.2f"])
 
     def get_context(self):
+        """------------------------------------------------------------
+        Returns a feature vector
+        ------------------------------------------------------------"""
         if(self.iscontextual):
             self.context_vector = random(self.context_dims) # Random context
         else:
@@ -120,15 +127,19 @@ class IM_Base:
         ------------------------------------------------------------"""
         return int("".join(map(str, [1 if(c > 0.5) else 0 for c in context_vector])), 2)
 
-    def update_squared_error(self, real_infs, inf_ests=None):
+    def update_l2_error(self, real_infs, inf_ests=None):
         if(inf_ests is None):
             inf_ests = self.inf_ests
-        self.squared_error.append(np.sqrt(sum((np.array(inf_ests) - np.array(real_infs)) ** 2 )))
+        self.l2_error.append(np.sqrt(sum((np.array(inf_ests) - np.array(real_infs)) ** 2 )))
 
-    def active_update(self, tried_cnts, success_cnts, context_idx, round_idx):
+    def active_update(self, tried_cnts, success_cnts, context_idx, epoch_idx):
+        """------------------------------------------------------------
+        Updates the influence probabilities by probing edge-level
+        feedback and returns the total incurred cost.
+        ------------------------------------------------------------"""
         cum_cost = 0
         for edge_idx, cnt in enumerate(self.counters[context_idx]):
-            if((cnt < self.explore_thresholds[round_idx-1]) and (tried_cnts[edge_idx] == 1)):
+            if((cnt < self.explore_thresholds[epoch_idx-1]) and (tried_cnts[edge_idx] == 1)):
                 cum_cost += 1
                 self.counters[context_idx][edge_idx] += tried_cnts[edge_idx]
                 self.successes[context_idx][edge_idx] += success_cnts[edge_idx]
