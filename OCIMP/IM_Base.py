@@ -3,12 +3,17 @@ from numpy.random import random, permutation, choice, binomial
 from copy import deepcopy
 
 class IM_Base:
-    def __init__(self, seed_size, graph_file, rounds, iscontextual, context_dims=2):
+    """------------------------------------------------------------
+    Base class of all IM algorithms. Handles common tasks such as
+    IC influence spread simulation, keeping track of results, 
+    generating contexts and influence probabilities, etc.
+    ------------------------------------------------------------"""
+    def __init__(self, seed_size, graph_file, epochs, iscontextual, context_dims=2):
         self.load_graph(graph_file)
         self.iscontextual = iscontextual
         self.context_dims = context_dims
         self.context_cnt = context_dims ** 2
-        self.rounds = rounds
+        self.epochs = epochs
         self.seed_size = seed_size 
         self.init_simulator(self.context_cnt)
         self.context_vector = np.zeros(self.context_dims)
@@ -16,7 +21,7 @@ class IM_Base:
         # Variables for storing the experiment results
         self.regret = []
         self.spread = []
-        self.squared_error = []
+        self.l2_error = []
 
     def init_simulator(self, context_cnt):
         self._slopes = np.array([random(4) * 3 / self.indegs[edge[1]] for edge in self.edges])
@@ -64,7 +69,7 @@ class IM_Base:
     def context_influences(self, context_vector):
         """------------------------------------------------------------
         Returns the real influence of the given context vector, which is
-        noise added version of that context category's center.
+        noise added version of that context partition center.
         ------------------------------------------------------------"""
         if(self.iscontextual):
             context_idx = self.context_classifier(context_vector)
@@ -106,6 +111,9 @@ class IM_Base:
         np.savetxt(dump_name, inf_graph, delimiter="\t", fmt=["%d", "%d", "%1.2f"])
 
     def get_context(self):
+        """------------------------------------------------------------
+        Returns a feature vector
+        ------------------------------------------------------------"""
         if(self.iscontextual):
             self.context_vector = random(self.context_dims) # Random context
         else:
@@ -118,7 +126,7 @@ class IM_Base:
         ------------------------------------------------------------"""
         return int("".join(map(str, [1 if(c > 0.5) else 0 for c in context_vector])), 2)
 
-    def update_squared_error(self, real_infs, inf_ests=None):
+    def update_l2_error(self, real_infs, inf_ests=None):
         if(inf_ests is None):
             inf_ests = self.inf_ests
-        self.squared_error.append(np.sqrt(sum((np.array(inf_ests) - np.array(real_infs)) ** 2 )))
+        self.l2_error.append(np.sqrt(sum((np.array(inf_ests) - np.array(real_infs)) ** 2 )))
