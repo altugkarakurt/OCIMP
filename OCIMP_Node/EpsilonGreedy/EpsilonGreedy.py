@@ -1,12 +1,12 @@
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import randint, binomial, random, choice
 import math
 
-class EpsilonGreedy(IM_Base):
+class EpsilonGreedy(IM_Base2):
     def __init__(self, seed_size, graph_file, epochs, iscontextual,
                 gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
@@ -33,7 +33,8 @@ class EpsilonGreedy(IM_Base):
         High level function that runs the online influence maximization
         algorithm for self.rounds times and reports aggregated regret
         ------------------------------------------------------------"""
-         for epoch_idx in np.arange(1, self.epochs+1):
+        for epoch_idx in np.arange(1, self.epochs+1):
+            print(epoch_idx)
             self.get_context()
             explore_bool = binomial(1, self.epsilons[epoch_idx-1])
 

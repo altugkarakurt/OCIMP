@@ -5,27 +5,22 @@ import Report
 from os.path import isfile, join
 
 seed_size = 50
+iscontextual = True
 
-for iscontextual in [True, False]:
-	for graph_file in ["subnethept.txt", "nethept.txt"]:
-		if((graph_file == "subnethept.txt") and (iscontextual)):
-			epochs = 5000
-		elif((graph_file == "nethept.txt") and (iscontextual)):
-			epochs = 5000
-		elif((graph_file == "subnethept.txt") and (not iscontextual)):
-			epochs = 1250
-		elif((graph_file == "nethept.txt") and (not iscontextual)):
-			epochs = 2500
-		experiment_name = "contextual_" if(iscontextual) else "noncontextual_"
-		experiment_name += graph_file[:-4]
+for graph_file in ["subnethept.txt", "nethept.txt"]:
+	if(graph_file == "subnethept.txt"):
+		epochs = 5000
+	elif(graph_file == "nethept.txt"):
+		epochs = 5000
+	experiment_name = "contextual_" + graph_file[:-4]
 
-		pathway = join("../../Misc/results", experiment_name, "thompsong_results.json")
+	pathway = join("../../Misc/results/sigmoid", experiment_name, "thompsong_results.json")
 
-		# Experiment is already done
-		if(isfile(pathway)):
-			continue
+	# Experiment is already done
+	if(isfile(pathway)):
+		continue
+	print(pathway)
+	thompsong = ThompsonG(seed_size, graph_file, epochs, iscontextual)
+	thompsong()
 
-		thompsong = ThompsonG(seed_size, graph_file, epochs, iscontextual)
-		thompsong()
-
-		Report.report("thompsong", thompsong, experiment_name)
+	Report.report("thompsong", thompsong, experiment_name)

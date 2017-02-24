@@ -1,15 +1,15 @@
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import choice, random
 import math
 from copy import deepcopy
 
-class OIM(IM_Base):
-    def __init__(self, seed_size, graph_file, epochs, alpha_init = 1,
-        beta_init = 1, epsilon=0.1):
+class OIM(IM_Base2):
+    def __init__(self, seed_size, graph_file, epochs, iscontextual,
+        alpha_init = 1, beta_init = 1, epsilon=0.1):
         """------------------------------------------------------------
         This is CB+MLE in "Online Influence Maximization" by Lei et al.
         ---------------------------------------------------------------
@@ -148,6 +148,6 @@ class OIM(IM_Base):
             # propagation
             for edge_idx in out_edges:
                 self.local_betas[edge_idx] += 1
-                tried_cnts[source_idx] += 1
+                tried_cnts[edge_idx] += 1
 
         return success_cnts, tried_cnts

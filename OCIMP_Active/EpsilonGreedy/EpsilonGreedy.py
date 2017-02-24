@@ -1,13 +1,13 @@
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import randint, binomial, random
 import math
 
-class EpsilonGreedy(IM_Base):
-    def __init__(self, seed_size, graph_file, epochs, iscontextual, cost
+class EpsilonGreedy(IM_Base2):
+    def __init__(self, seed_size, graph_file, epochs, iscontextual, cost,
                 gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
         seed_size    : number of nodes to be selected
@@ -35,10 +35,10 @@ class EpsilonGreedy(IM_Base):
         algorithm for self.epochs times and reports aggregated regret
         ------------------------------------------------------------"""
         for epoch_idx in np.arange(1, self.epochs+1):
+            print(epoch_idx)
             self.get_context()
             context_idx = self.context_classifier(self.context_vector)
-            print(context_idx)
-            explore_bool = binomial(1, self.epsilons[r-1])
+            explore_bool = binomial(1, self.epsilons[epoch_idx-1])
 
             # Exploration Epoch, set influence estimates accordingly
             if(explore_bool):

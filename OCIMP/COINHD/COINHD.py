@@ -1,11 +1,11 @@
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import randint, binomial, random
 
-class COINHD(IM_Base):
+class COINHD(IM_Base2):
     def __init__(self, seed_size, graph_file, epochs, iscontextual,
                 gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
@@ -17,7 +17,7 @@ class COINHD(IM_Base):
         # Tunable algorithm parameters
         super().__init__(seed_size, graph_file, epochs, iscontextual)
         self.epsilon = epsilon
-        self.control_func = [((epoch_idx ** gamma)/10) for epoch_idx in np.arange(1, epochs+1)]
+        self.control_func = [((epoch_idx ** gamma)/100) for epoch_idx in np.arange(1, epochs+1)]
 
         self.under_exps = []
         reverse_dict = {node : self.edges[np.where(self.edges[:,0] == node)[0]][:,1] \
@@ -40,6 +40,7 @@ class COINHD(IM_Base):
         algorithm for self.epochs times and reports aggregated regret
         ------------------------------------------------------------"""
         for epoch_idx in np.arange(1, self.epochs+1):
+            print(epoch_idx)
             self.get_context()
             context_idx = self.context_classifier(self.context_vector)
             under_explored = self.under_explored_nodes(context_idx, epoch_idx)

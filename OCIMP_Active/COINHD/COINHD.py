@@ -1,12 +1,12 @@
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import randint, binomial, random
 
-class COINHD(IM_Base):
-    def __init__(self, seed_size, graph_file, rounds, iscontextual, cost, 
+class COINHD(IM_Base2):
+    def __init__(self, seed_size, graph_file, epochs, iscontextual, cost, 
                 gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
         seed_size    : number of nodes to be selected
@@ -42,6 +42,7 @@ class COINHD(IM_Base):
         algorithm for self.epochs times and reports aggregated regret
         ------------------------------------------------------------"""
         for epoch_idx in np.arange(1, self.epochs+1):
+            print(epoch_idx)
             self.get_context()
             context_idx = self.context_classifier(self.context_vector)
             under_explored = self.under_explored_nodes(context_idx, epoch_idx)
@@ -89,7 +90,7 @@ class COINHD(IM_Base):
         with heights out-degrees
         ------------------------------------------------------------"""
         cur_counter = self.counters[context_idx]
-        edge_idxs = np.array(np.where(cur_counter < self.explore_thresholds[epoch_idx-1])[0])
+        edge_idxs = np.array(np.where(cur_counter < self.control_func[epoch_idx-1])[0])
         node_idxs = np.unique(self.edges[edge_idxs][:,0]).tolist()
         self.under_exps.append(len(node_idxs))
         

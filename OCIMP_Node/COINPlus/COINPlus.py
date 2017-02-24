@@ -2,11 +2,11 @@ from undertim import PyUnderTimGraph
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import randint, binomial, random
 
-class COINPlus(IM_Base):
+class COINPlus(IM_Base2):
     def __init__(self, seed_size, graph_file, epochs, iscontextual,
                 gamma=0.4, epsilon=0.1):
         """------------------------------------------------------------
@@ -37,19 +37,18 @@ class COINPlus(IM_Base):
         High level function that runs the online influence maximization
         algorithm for self.rounds times and reports aggregated regret
         ------------------------------------------------------------"""
-         for epoch_idx in np.arange(1, self.epochs+1):
+        for epoch_idx in np.arange(1, self.epochs+1):
+            print(epoch_idx)
             self.get_context()
             context_idx = self.context_classifier(self.context_vector)
             under_explored = self.under_explored_nodes(context_idx, epoch_idx)
 
             # If there are enough under-explored edges, return them
             if(len(under_explored) == self.seed_size):
-                print("Under-Explored")
                 seed_set = under_explored
             
             # Otherwise, run TIM
             else:
-                print("TIM")
                 self.dump_graph(self.inf_ests[context_idx], ("tim_"+self.graph_file))
                 timgraph = PyTimGraph(bytes("tim_" + self.graph_file, "ascii"), self.node_cnt, self.edge_cnt,
                                                           (self.seed_size - len(under_explored)), bytes("IC", "ascii"))
@@ -89,7 +88,6 @@ class COINPlus(IM_Base):
         under_exp_nodes = np.unique(self.edges[edge_idxs][:,0]).tolist()
         self.under_exps.append(len(under_exp_nodes))
         if(len(under_exp_nodes) > self.seed_size):
-            print("Under Explored Count:%d" % (self.under_exps[-1]))
             banned_nodes = list(set(self.nodes) - set(under_exp_nodes))
             self.dump_graph(self.inf_ests[context_idx], ("undertim_"+self.graph_file))
             undertim = PyUnderTimGraph(bytes("undertim_" + self.graph_file, "ascii"), self.node_cnt, self.edge_cnt, self.seed_size, bytes("IC", "ascii"), banned_nodes)

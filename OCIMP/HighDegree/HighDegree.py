@@ -1,12 +1,12 @@
 from pytim import PyTimGraph
 import sys
 sys.path.append("..")
-from IM_Base import IM_Base
+from IM_Base2 import IM_Base2
 import numpy as np
 from numpy.random import randint, binomial
 from copy import deepcopy
 
-class MaxDegree(IM_Base):
+class HighDegree(IM_Base2):
     def __init__(self, seed_size, graph_file, epochs, iscontextual,
                 epsilon=0.1):
         """------------------------------------------------------------
