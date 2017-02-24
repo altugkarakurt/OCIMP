@@ -13,3 +13,5 @@ We use TIM+ as the offline influence maximization solver for the online algorith
 Then, replace the pytim.* and undertim.* files in each of the algorithm's folders. These are the compilations based on the author's computer. Notice that, the graph files and these C++ shared object files are copied in each of the folder independently. This prevents the racing conditions and makes it possible to run multiple algorithms simultaneously without any segmentation fault.
 
 Each algorithm has a class implementation that implements a base class. To run an algorithm, you can simply use *_script.py files and don't need to change the implementations. The tunable parameters for a simulation are explicitly declared in these scripts and can easily be changed.
+
+There are currently 2 context space implementations, IM_Base.py corresponds to the pyramidal surfaces and IM_Base2.py to the sigmoid-based surfaces. In order to employ one, you just need to make sure that the algorithm implements the correct base class.
